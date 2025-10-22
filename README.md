@@ -1,7 +1,11 @@
-# OpenWorldSAM: Extending SAM2 for Universal Image Segmentation with Language Prompts [NeurIPS 2025]
 <div align="center">
+
+# OpenWorldSAM: Extending SAM2 for Universal Image Segmentation with Language Prompts [NeurIPS 2025]
+
 🎉 NeurIPS 2025 Spotlight 🎉 
+
 [Shiting (Ginny) Xiao](https://scholar.google.com/citations?user=_KHyWmAAAAAJ&hl=en), [Rishabh Kabra](https://scholar.google.com/citations?user=NVD-BU4AAAAJ&hl=en), [Yuhang Li](https://scholar.google.com/citations?user=3UzXL-AAAAAJ&hl=zh-CN), [Donghyun Lee](https://scholar.google.com/citations?user=3-6c0TkAAAAJ&hl=zh-CN), [João Carreira](https://scholar.google.com/citations?user=IUZ-7_cAAAAJ&hl=en), [Priya Panda](https://scholar.google.com/citations?user=qA5WsYUAAAAJ&hl=en)
+
 </div>
 
 OpenWorldSAM pushes the boundaries of SAM2 by enabling **open-vocabulary segmentation** with flexible language prompts.
