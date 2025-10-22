@@ -34,11 +34,7 @@ Install panopticapi:
 pip install git+https://github.com/cocodataset/panopticapi.git
 ```
 
-Then, run 
-
-`python datasets/prepare_coco_semantic_annos_from_panoptic_annos.py`
-
- from the MaskFormer repo, to extract semantic annotations from panoptic annotations (only used for evaluation).
+Then, run `python datasets/prepare_coco_semantic_annos_from_panoptic_annos.py` from the MaskFormer repo, to extract semantic annotations from panoptic annotations (only used for evaluation).
 
 Download additional annotations and put them inside `coco/annotations/`:
 
