@@ -9,10 +9,10 @@
 </div>
 
 OpenWorldSAM pushes the boundaries of SAM2 by enabling **open-vocabulary segmentation** with flexible language prompts.
-🚀 **No fine-tuning of SAM2 weights.**
-🔧 **Unified pipeline for panoptic, instance, semantic, and referring expression segmentation guided by language prompts.**
-📈 **State-of-the-art ZERO-SHOT performance across multiple benchmarks.**
-💡 **Minimal overhead: just 4.5 M additional parameters!**
+- 🚀 **No fine-tuning of SAM2 weights.**
+- 🔧 **Unified pipeline for panoptic, instance, semantic, and referring expression segmentation guided by language prompts.**
+- 📈 **State-of-the-art ZERO-SHOT performance across multiple benchmarks.**
+- 💡 **Minimal overhead: just 4.5 M additional parameters!**
 
 📄 **[Read our paper on arXiv](https://arxiv.org/abs/2507.05427)**
 
