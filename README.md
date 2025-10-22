@@ -154,7 +154,7 @@ Specific datasets:
   ```bash
   python train_net.py --config-file configs/pascal/semantic-segmentation/Open-World-SAM2-CrossAttention.yaml --eval-only
   ```
-Change `DATASETS.TEST` for different evaluation sets: `pascal_context_459_sem_seg_val`, `pascal_context_59_sem_seg_val`, and `pascalvoc20_sem_seg_val`.
+   Change `DATASETS.TEST` for different evaluation sets: `pascal_context_459_sem_seg_val`, `pascal_context_59_sem_seg_val`, and `pascalvoc20_sem_seg_val`.
 
 - **SUN-RGBD semantic**
 
