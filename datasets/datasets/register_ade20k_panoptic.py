@@ -350,12 +350,9 @@ def get_metadata():
     thing_dataset_id_to_contiguous_id = {}
     stuff_dataset_id_to_contiguous_id = {}
 
-    thing_ids = [k["id"] for k in ADE20K_150_CATEGORIES if k["isthing"] == 1]
-    thing_dataset_id_to_contiguous_id = {k: i for i, k in enumerate(thing_ids)}
-
     for i, cat in enumerate(ADE20K_150_CATEGORIES):
-        # if cat["isthing"]:
-        #     thing_dataset_id_to_contiguous_id[cat["id"]] = i
+        if cat["isthing"]:
+            thing_dataset_id_to_contiguous_id[cat["id"]] = i
         # else:
         #     stuff_dataset_id_to_contiguous_id[cat["id"]] = i
 
