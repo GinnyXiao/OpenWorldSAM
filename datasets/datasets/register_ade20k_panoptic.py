@@ -1,5 +1,4 @@
 # Copyright (c) Facebook, Inc. and its affiliates.
-# modified by Ginny Xiao
 import json
 import os
 
@@ -312,14 +311,12 @@ _PREDEFINED_SPLITS_ADE20K_PANOPTIC = {
         "ADEChallengeData2016/ade20k_panoptic_train",
         "ADEChallengeData2016/ade20k_panoptic_train.json",
         "ADEChallengeData2016/annotations_detectron2/training",
-        "ADEChallengeData2016/ade20k_instance_train.json",
     ),
     "ade20k_panoptic_val": (
         "ADEChallengeData2016/images/validation",
         "ADEChallengeData2016/ade20k_panoptic_val",
         "ADEChallengeData2016/ade20k_panoptic_val.json",
         "ADEChallengeData2016/annotations_detectron2/validation",
-        "ADEChallengeData2016/ade20k_instance_val.json",
     ),
 }
 
@@ -332,8 +329,8 @@ def get_metadata():
     # visualization function in D2 handles thing and class classes differently
     # due to some heuristic used in Panoptic FPN. We keep the same naming to
     # enable reusing existing visualization functions.
-    thing_classes = [k["name"] for k in ADE20K_150_CATEGORIES if k["isthing"] == 1]
-    thing_colors = [k["color"] for k in ADE20K_150_CATEGORIES if k["isthing"] == 1]
+    thing_classes = [k["name"] for k in ADE20K_150_CATEGORIES]
+    thing_colors = [k["color"] for k in ADE20K_150_CATEGORIES]
     stuff_classes = [k["name"] for k in ADE20K_150_CATEGORIES]
     stuff_colors = [k["color"] for k in ADE20K_150_CATEGORIES]
 
@@ -353,14 +350,12 @@ def get_metadata():
     thing_dataset_id_to_contiguous_id = {}
     stuff_dataset_id_to_contiguous_id = {}
 
-    # thing_ids = [k["id"] for k in ADE20K_150_CATEGORIES if k["isthing"] == 1]
-    # thing_dataset_id_to_contiguous_id = {k: i for i, k in enumerate(thing_ids)}
-    # stuff_ids = [k["id"] for k in ADE20K_150_CATEGORIES]
-    # stuff_dataset_id_to_contiguous_id = {k: i for i, k in enumerate(stuff_ids)}
+    thing_ids = [k["id"] for k in ADE20K_150_CATEGORIES if k["isthing"] == 1]
+    thing_dataset_id_to_contiguous_id = {k: i for i, k in enumerate(thing_ids)}
 
     for i, cat in enumerate(ADE20K_150_CATEGORIES):
-        if cat["isthing"]:
-            thing_dataset_id_to_contiguous_id[cat["id"]] = i
+        # if cat["isthing"]:
+        #     thing_dataset_id_to_contiguous_id[cat["id"]] = i
         # else:
         #     stuff_dataset_id_to_contiguous_id[cat["id"]] = i
 
@@ -368,9 +363,8 @@ def get_metadata():
         stuff_dataset_id_to_contiguous_id[cat["id"]] = i
 
     meta["thing_dataset_id_to_contiguous_id"] = thing_dataset_id_to_contiguous_id
-    # print("thing_dataset_id_to_contiguous_id", meta["thing_dataset_id_to_contiguous_id"])
     meta["stuff_dataset_id_to_contiguous_id"] = stuff_dataset_id_to_contiguous_id
-    meta["object_mask_threshold"] = 0.4
+
     return meta
 
 
@@ -378,7 +372,7 @@ def register_all_ade20k_panoptic(root):
     metadata = get_metadata()
     for (
         prefix,
-        (image_root, panoptic_root, panoptic_json, semantic_root, instance_json),
+        (image_root, panoptic_root, panoptic_json, semantic_root),
     ) in _PREDEFINED_SPLITS_ADE20K_PANOPTIC.items():
         # The "standard" version of COCO panoptic segmentation dataset,
         # e.g. used by Panoptic-DeepLab
@@ -389,7 +383,6 @@ def register_all_ade20k_panoptic(root):
             os.path.join(root, panoptic_root),
             os.path.join(root, semantic_root),
             os.path.join(root, panoptic_json),
-            os.path.join(root, instance_json),
         )
 
 

@@ -225,7 +225,7 @@ class OpenWorldSAM2(nn.Module):
             "cross_attention_layers": cfg.MODEL.OpenWorldSAM2.CROSS_ATTENTION_LAYERS,
             "two_stage_inference": two_stage_inference,  # Add the new parameter here
             "refer_on": refer_on,  # Add refer_on from config
-            "metadata": MetadataCatalog.get(cfg['DATASETS']['TRAIN'][0]),
+            "metadata": MetadataCatalog.get(cfg['DATASETS']['TRAIN'][0]) ,
         }
 
     def print_trainable_parameters(self):

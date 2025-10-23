@@ -28,7 +28,6 @@ from detectron2.evaluation import (
     CityscapesInstanceEvaluator,
     CityscapesSemSegEvaluator,
     COCOEvaluator,
-    # SemSegEvaluator,
     DatasetEvaluators,
     LVISEvaluator,
     verify_results,
@@ -148,9 +147,6 @@ class Trainer(DefaultTrainer):
         if evaluator_type in [
             "coco_panoptic_seg",
             "ade20k_panoptic_seg",
-            "mapillary_vistas_panoptic_seg",
-            "cityscapes_panoptic_seg",
-            "bdd_panoptic_pano",
             "scannet_panoptic_seg"
         ]:
             evaluator_list.append(COCOPanopticEvaluator(dataset_name, output_folder))
@@ -162,37 +158,10 @@ class Trainer(DefaultTrainer):
             evaluator_list.append(SemSegEvaluator(dataset_name, distributed=True, output_dir=output_folder))
 
         # ADE20K
-        if evaluator_type == "ade20k_panoptic_seg" and cfg.MODEL.OpenWorldSAM2WithCLIP.TEST.SEMANTIC_ON:
+        if evaluator_type == "ade20k_panoptic_seg" and cfg.MODEL.OpenWorldSAM2.TEST.SEMANTIC_ON:
             evaluator_list.append(SemSegEvaluator(dataset_name, distributed=True, output_dir=output_folder))
 
-        # BDD
-        if evaluator_type == "bdd_pano_sem_seg" and cfg.MODEL.OpenWorldSAM2.TEST.SEMANTIC_ON:
-            evaluator_list.append(SemSegEvaluator(dataset_name, distributed=True, output_dir=output_folder))
-
-        # Cityscapes
-        if evaluator_type == "cityscapes_instance":
-            assert (
-                    torch.cuda.device_count() > comm.get_rank()
-            ), "CityscapesEvaluator currently do not work with multiple machines."
-            return CityscapesInstanceEvaluator(dataset_name)
-        if evaluator_type == "cityscapes_sem_seg":
-            assert (
-                    torch.cuda.device_count() > comm.get_rank()
-            ), "CityscapesEvaluator currently do not work with multiple machines."
-            return CityscapesSemSegEvaluator(dataset_name)
-        if evaluator_type == "cityscapes_panoptic_seg":
-            if cfg.MODEL.OpenWorldSAM2.TEST.SEMANTIC_ON:
-                assert (
-                        torch.cuda.device_count() > comm.get_rank()
-                ), "CityscapesEvaluator currently do not work with multiple machines."
-                evaluator_list.append(CityscapesSemSegEvaluator(dataset_name))
-            if cfg.MODEL.OpenWorldSAM2.TEST.INSTANCE_ON:
-                assert (
-                        torch.cuda.device_count() > comm.get_rank()
-                ), "CityscapesEvaluator currently do not work with multiple machines."
-                evaluator_list.append(CityscapesInstanceEvaluator(dataset_name))
-
-        # RefCOOC
+        # RefCOCO
         if evaluator_type in ["grounding_refcoco"]:
             evaluator_list.append(GroundingEvaluator(dataset_name))
 
@@ -369,9 +338,10 @@ def main(args):
 
     if args.eval_only:
         model = Trainer.build_model(cfg)
+        model.metadata = MetadataCatalog.get(cfg['DATASETS']['TEST'][0])
         print(cfg.OUTPUT_DIR)
         DetectionCheckpointer(model, save_dir=cfg.OUTPUT_DIR).resume_or_load(
-            os.path.join(cfg.OUTPUT_DIR, cfg.MODEL.WEIGHTS), resume=args.resume
+            cfg.MODEL.WEIGHTS, resume=args.resume
         )
         
         res = Trainer.test(cfg, model)

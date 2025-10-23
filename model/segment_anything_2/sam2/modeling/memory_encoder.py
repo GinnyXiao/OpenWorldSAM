@@ -95,7 +95,7 @@ class CXBlock(nn.Module):
         self.act = nn.GELU()
         self.pwconv2 = nn.Linear(4 * dim, dim)
         # modified by ZhangYx from self.gamma to self.weight. Due to (https://github.com/facebookresearch/segment-anything-2/issues/85)
-        self.weight = (
+        self.gamma = (
             nn.Parameter(layer_scale_init_value * torch.ones((dim)), requires_grad=True)
             if layer_scale_init_value > 0
             else None
@@ -110,8 +110,8 @@ class CXBlock(nn.Module):
         x = self.pwconv1(x)
         x = self.act(x)
         x = self.pwconv2(x)
-        if self.weight is not None:
-            x = self.weight * x
+        if self.gamma is not None:
+            x = self.gamma * x
         x = x.permute(0, 3, 1, 2)  # (N, H, W, C) -> (N, C, H, W)
 
         x = input + self.drop_path(x)
