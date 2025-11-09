@@ -1,0 +1,54 @@
+DATASETS:
+  TRAIN: ("coco_2017_train_panoptic_filtrefgumdval_with_sem_seg", )
+  TEST: ("sunrgbd_37_val_seg", )
+MODEL:
+  META_ARCHITECTURE: "OpenWorldSAM2"
+  WEIGHTS: "checkpoints/model_final.pth"
+  PIXEL_MEAN: [ 123.675, 116.280, 103.530 ]
+  PIXEL_STD: [ 58.395, 57.120, 57.375 ]
+  OpenWorldSAM2:
+    NO_OBJECT_WEIGHT: 0.0
+    OBJECTNESS_WEIGHT: 0.0
+    MASK_WEIGHT: 20.0
+    DICE_WEIGHT: 0.0
+    # EVF-SAM2 config
+    QUERY_DIM: 256
+    TORCH_DTYPE: "fp32"
+    TRAIN_TIE_BREAKER: True
+    TRAIN_VLM: False
+    SAM_IOU: True
+    USE_VISUAL_TOKENS: True  # Control whether to use visual tokens in VLM
+    USE_CROSS_ATTENTION: True  # Enable cross-attention between VLM features and image embeddings
+    CROSS_ATTENTION_LAYERS: 3
+    ENCODER_PRETRAINED: "open_world_sam2/checkpoints/beit3_large_patch16_224.pth"
+    NUM_OBJECT_QUERIES: 20
+    TEST:
+      SEMANTIC_ON: True
+      INSTANCE_ON: False
+      PANOPTIC_ON: False
+      TOP_K_ON: False
+      NMS_ON: True
+      NMS_THRESHOLD: 0.5
+      IOU_THRESHOLD: 0.7
+INPUT:
+  IMAGE_SIZE: 1024
+  FORMAT: "RGB"
+  DATASET_MAPPER_NAME: "open_world_panoptic"
+SOLVER:
+  AMP:
+    ENABLED: True
+  CHECKPOINT_PERIOD: 20000
+  MAX_ITER: 500000 # 500000
+  IMS_PER_BATCH: 8
+  CLIP_GRADIENTS:
+    ENABLED: True
+    CLIP_TYPE: "full_model"
+    CLIP_VALUE: 0.005  # More aggressive clipping
+    NORM_TYPE: 2.0
+TEST:
+  EVAL_PERIOD: 50000 #50000
+DATALOADER:
+  FILTER_EMPTY_ANNOTATIONS: True
+  RANDOM_SUBSET_RATIO: 0.001
+  NUM_WORKERS: 8
+VERSION: 2
