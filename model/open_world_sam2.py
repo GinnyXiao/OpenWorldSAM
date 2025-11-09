@@ -113,8 +113,8 @@ class OpenWorldSAM2(nn.Module):
     def from_config(cls, cfg):
         # EVF-SAM config & model
         evf_config = cfg.MODEL.OpenWorldSAM2.EVF_CONFIG
-
-        kwargs = {"torch_dtype": torch.float32,
+        torch_dtype = torch.float32
+        kwargs = {"torch_dtype": torch_dtype,
                   "vision_pretrained": cfg.MODEL.OpenWorldSAM2.VISION_PRETRAINED,
                   "encoder_pretrained": cfg.MODEL.OpenWorldSAM2.ENCODER_PRETRAINED,
                   }
@@ -145,7 +145,7 @@ class OpenWorldSAM2(nn.Module):
 
         # Projection Layer
         query_dim = cfg.MODEL.OpenWorldSAM2.QUERY_DIM
-        in_dim = beit_config.encoder_embed_dim
+        in_dim = evf_sam2.config.hidden_size
         text_fc = [
             nn.Linear(in_dim, in_dim),
             nn.ReLU(),
@@ -241,9 +241,10 @@ class OpenWorldSAM2(nn.Module):
             if param.requires_grad:
                 trainable_params += num_params
                 trainable_status = "Yes"
+                logger.info(f"{name:<40}{trainable_status:<10}{str(list(param.shape)):<20}{num_params:<15}")
             else:
                 trainable_status = "No"
-            # logger.info(f"{name:<40}{trainable_status:<10}{str(list(param.shape)):<20}{num_params:<15}")
+            #
 
         logger.info("=" * 85)
         logger.info(f"Total parameters: {total_params}")

@@ -112,7 +112,7 @@ class EvfSam2Model(PreTrainedModel):
         )
 
         for param in self.mm_extractor.parameters():
-            param.requires_grad = True
+            param.requires_grad = False
                 
         # Projection layer
         in_dim = config.hidden_size
@@ -125,9 +125,9 @@ class EvfSam2Model(PreTrainedModel):
             nn.Linear(in_dim, out_dim)
         ]
         self.text_hidden_fcs = nn.ModuleList([nn.Sequential(*text_fc)])
-        self.text_hidden_fcs.train()
+        # self.text_hidden_fcs.train()
         for param in self.text_hidden_fcs.parameters():
-            param.requires_grad = True
+            param.requires_grad = False
 
     def print_trainable_parameters(self):
         """
