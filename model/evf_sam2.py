@@ -80,7 +80,6 @@ class EvfSam2Model(PreTrainedModel):
 
     def initialize_evf_modules(self, config):
         # SAM
-        print("Loading SAM2 model from {}...".format(self.vision_pretrained))
         if config.sam_scale=="large": # config is "large"
             self.visual_model = build_sam2("sam2_hiera_l.yaml", self.vision_pretrained, device=None)
         else:
@@ -103,7 +102,6 @@ class EvfSam2Model(PreTrainedModel):
         else:
             raise AttributeError(f"model config should contain key 'mm_extractor_scale', with value 'base' or 'large'.")
 
-        print("Loading BEiT-3 model from {}...".format(self.encoder_pretrained))
         self.mm_extractor = BEiT3Wrapper(beit_config)
         beit_state_dict = torch.load(self.encoder_pretrained)["model"]
         self.mm_extractor.load_state_dict(

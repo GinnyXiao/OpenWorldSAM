@@ -5,8 +5,6 @@ MODEL:
   PIXEL_MEAN: [ 123.675, 116.280, 103.530 ]
   PIXEL_STD: [ 58.395, 57.120, 57.375 ]
   OpenWorldSAM2:
-    NO_OBJECT_WEIGHT: 0.0
-    OBJECTNESS_WEIGHT: 0.0
     MASK_WEIGHT: 20.0
     DICE_WEIGHT: 0.0
     # EVF-SAM2 config
@@ -14,7 +12,6 @@ MODEL:
     TORCH_DTYPE: "fp32"
     TRAIN_TIE_BREAKER: True
     TRAIN_VLM: False
-    SAM_IOU: True
     USE_VISUAL_TOKENS: True  # Control whether to use visual tokens in VLM
     USE_CROSS_ATTENTION: True  # Enable cross-attention between VLM features and image embeddings
     CROSS_ATTENTION_LAYERS: 3

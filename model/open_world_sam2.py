@@ -47,7 +47,6 @@ class OpenWorldSAM2(nn.Module):
             semantic_on: bool,
             instance_on: bool,
             panoptic_on: bool,
-            sam_iou: bool,
             use_visual_tokens: bool = True,
             use_cross_attention: bool = False,
             cross_attention_layers: int = 3,  # Added parameter for number of layers
@@ -81,14 +80,6 @@ class OpenWorldSAM2(nn.Module):
                 dropout=0.1
             )
 
-        if not sam_iou:
-            self.objectness_prediction_head = MLP(
-                input_dim=evf_sam2.visual_model.memory_attention.d_model,
-                hidden_dim=256,
-                output_dim=1,
-                num_layers=3,
-                sigmoid_output=True,
-            )
         self.register_buffer("pixel_mean", torch.Tensor(pixel_mean).view(-1, 1, 1), False)
         self.register_buffer("pixel_std", torch.Tensor(pixel_std).view(-1, 1, 1), False)
         self.dtype = dtype
@@ -97,7 +88,6 @@ class OpenWorldSAM2(nn.Module):
         self.semantic_on = semantic_on
         self.instance_on = instance_on
         self.panoptic_on = panoptic_on
-        self.sam_iou = sam_iou
         self.top_k_on = top_k_on
         self.nms_on = nms_on
         self.test_topk_per_image = test_topk_per_image
@@ -131,6 +121,8 @@ class OpenWorldSAM2(nn.Module):
 
         # SAM2 visual model
         visual_model = evf_sam2.visual_model
+        print("Loading SAM2 model from {}...".format(cfg.MODEL.OpenWorldSAM2.VISION_PRETRAINED))
+        visual_model.load_state_dict(torch.load(cfg.MODEL.OpenWorldSAM2.VISION_PRETRAINED)["model"], strict=False)
         for param in visual_model.parameters():
             param.requires_grad = False
 
@@ -215,7 +207,6 @@ class OpenWorldSAM2(nn.Module):
             "test_topk_per_image": cfg.MODEL.OpenWorldSAM2.TEST.DETECTIONS_PER_IMAGE,
             "nms_threshold": cfg.MODEL.OpenWorldSAM2.TEST.NMS_THRESHOLD,
             "iou_threshold": cfg.MODEL.OpenWorldSAM2.TEST.IOU_THRESHOLD,
-            "sam_iou": cfg.MODEL.OpenWorldSAM2.SAM_IOU,
             "use_visual_tokens": cfg.MODEL.OpenWorldSAM2.USE_VISUAL_TOKENS,
             "use_cross_attention": use_cross_attention,
             "cross_attention_layers": cfg.MODEL.OpenWorldSAM2.CROSS_ATTENTION_LAYERS,
@@ -244,7 +235,6 @@ class OpenWorldSAM2(nn.Module):
                 logger.info(f"{name:<40}{trainable_status:<10}{str(list(param.shape)):<20}{num_params:<15}")
             else:
                 trainable_status = "No"
-            #
 
         logger.info("=" * 85)
         logger.info(f"Total parameters: {total_params}")
@@ -451,7 +441,7 @@ class OpenWorldSAM2(nn.Module):
             ]
 
             # Process all prompts for this image through SAM mask decoder
-            low_res_masks, iou_pred, sam_tokens_out, _ = self.visual_model.sam_mask_decoder(
+            low_res_masks, iou_pred, _, _ = self.visual_model.sam_mask_decoder(
                 image_embeddings=_features["image_embed"][img_idx].unsqueeze(0),
                 image_pe=self.visual_model.sam_prompt_encoder.get_dense_pe(),
                 sparse_prompt_embeddings=sparse_embeddings,
@@ -463,11 +453,7 @@ class OpenWorldSAM2(nn.Module):
 
             # Get predictions for this image
             pred_masks = low_res_masks.squeeze(1)
-            if not self.sam_iou:
-                objectness_logits = self.objectness_prediction_head(sam_tokens_out.squeeze(1))
-                outputs = {"pred_masks": pred_masks.unsqueeze(0), "pred_logits": objectness_logits.unsqueeze(0)}
-            else:
-                outputs = {"pred_masks": pred_masks.unsqueeze(0), "pred_logits": iou_pred.unsqueeze(0)}
+            outputs = {"pred_masks": pred_masks.unsqueeze(0), "pred_logits": iou_pred.unsqueeze(0)}
 
             ################################# Inference Postprocessing ##################################
             # Postprocess masks
@@ -581,10 +567,7 @@ class OpenWorldSAM2(nn.Module):
                 pred_splits = [self.num_tokens] * num_prompts
                 pred_masks_list = torch.split(pred_masks, pred_splits)
 
-                if not self.sam_iou:
-                    pred_logits_list = torch.split(objectness_logits, pred_splits)
-                else:
-                    pred_logits_list = torch.split(iou_pred, pred_splits)
+                pred_logits_list = torch.split(iou_pred, pred_splits)
 
                 # Process each prompt separately
                 for prompt_idx in range(num_prompts):

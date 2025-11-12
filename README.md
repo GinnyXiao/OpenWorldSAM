@@ -86,15 +86,12 @@ See [Evaluation](#evaluation) guidance.
 
 All experiments use Detectron2's training loop with YAML configs stored in `configs/`. Set `MODEL.WEIGHTS` to the path of the checkpoint you wish to resume from or leave blank for training from scratch.
 
-Download pretrained backbones:
+Download SAM2 pretrained backbone:
 
 ```bash
 mkdir checkpoints
 cd checkpoints
 
-# Download BEiT-3 ViT-B checkpoint
-wget -O beit3_large_patch16_224.pth https://github.com/addf400/files/releases/download/beit3/beit3_large_patch16_224.pth
-# Download SAM2-large checkpoint
 wget -O sam2_hiera_large.pt https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_large.pt
 ```
 
@@ -105,7 +102,6 @@ On COCO-panoptic:
 ```bash
 python train_net.py \
   --config-file configs/coco/panoptic-segmentation/Open-World-SAM2-CrossAttention.yaml \
-  --num-gpus 4 \
   --run 0 \
   -b 8 \
   MODEL.WEIGHTS ""
@@ -116,13 +112,12 @@ On RefCOCOg:
 ```bash
 python train_net.py \
   --config-file configs/refcoco/Open-World-SAM2-CrossAttention.yaml \
-  --num-gpus 1 \
   --run 1 \
   -b 8 \
   MODEL.WEIGHTS ""
 ```
 
-Adjust `--num-gpus`, batch size (`-b` or `SOLVER.IMS_PER_BATCH`), and output directory as needed.
+Adjust batch size (`-b` or `SOLVER.IMS_PER_BATCH`) and output directory (run index) as needed. Currently, multi-GPU training is NOT supported, as the dataloader returns varied number of prompts per image - the computational graph will be different for each batch.
 
 ### Evaluation
 

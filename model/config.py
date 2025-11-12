@@ -35,7 +35,6 @@ def add_open_world_sam2_config(cfg):
     cfg.MODEL.OpenWorldSAM2.QUERY_DIM = 256
     cfg.MODEL.OpenWorldSAM2.VISION_PRETRAINED = "checkpoints/sam_vit_h_4b8939.pth"
     cfg.MODEL.OpenWorldSAM2.ENCODER_PRETRAINED = "checkpoints/beit3_large_patch16_224.pth"
-    cfg.MODEL.OpenWorldSAM2.SAM_IOU = True
 
     # OPENWORLDSAM2 config
     cfg.MODEL.OpenWorldSAM2.NUM_OBJECT_QUERIES = 20
@@ -58,10 +57,10 @@ def add_open_world_sam2_config(cfg):
     cfg.MODEL.OpenWorldSAM2.TEST.REFER_ON = False
 
     # loss
-    cfg.MODEL.OpenWorldSAM2.NO_OBJECT_WEIGHT = 0.1
     cfg.MODEL.OpenWorldSAM2.DICE_WEIGHT = 1.0
     cfg.MODEL.OpenWorldSAM2.MASK_WEIGHT = 5.0
-    cfg.MODEL.OpenWorldSAM2.OBJECTNESS_WEIGHT = 1.0
+    # no object and objectness weight are set to 0 to disable them
+    # no supervision on SAM's IOU prediction because empirical results show it does not help
+    cfg.MODEL.OpenWorldSAM2.NO_OBJECT_WEIGHT = 0.0
+    cfg.MODEL.OpenWorldSAM2.OBJECTNESS_WEIGHT = 0.0
 
-    # model config
-    cfg.MODEL.OpenWorldSAM2.NUM_OBJECT_QUERIES = 20
