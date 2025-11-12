@@ -104,10 +104,7 @@ class OpenWorldSAM2(nn.Module):
         # EVF-SAM config & model
         evf_config = cfg.MODEL.OpenWorldSAM2.EVF_CONFIG
         torch_dtype = torch.float32
-        kwargs = {"torch_dtype": torch_dtype,
-                  "vision_pretrained": cfg.MODEL.OpenWorldSAM2.VISION_PRETRAINED,
-                  "encoder_pretrained": cfg.MODEL.OpenWorldSAM2.ENCODER_PRETRAINED,
-                  }
+        kwargs = {"torch_dtype": torch_dtype}
 
         # tokenizer
         tokenizer_config = cfg.MODEL.OpenWorldSAM2.TOKENIZER_CONFIG

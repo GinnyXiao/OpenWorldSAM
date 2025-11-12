@@ -103,11 +103,12 @@ class EvfSam2Model(PreTrainedModel):
             raise AttributeError(f"model config should contain key 'mm_extractor_scale', with value 'base' or 'large'.")
 
         self.mm_extractor = BEiT3Wrapper(beit_config)
-        beit_state_dict = torch.load(self.encoder_pretrained)["model"]
-        self.mm_extractor.load_state_dict(
-            beit_state_dict, 
-            strict=False
-        )
+        if self.encoder_pretrained and os.path.exists(self.encoder_pretrained):
+            beit_state_dict = torch.load(self.encoder_pretrained)["model"]
+            self.mm_extractor.load_state_dict(
+                beit_state_dict,
+                strict=False
+            )
 
         for param in self.mm_extractor.parameters():
             param.requires_grad = False

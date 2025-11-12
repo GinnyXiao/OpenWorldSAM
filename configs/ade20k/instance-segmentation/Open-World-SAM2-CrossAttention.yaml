@@ -15,7 +15,6 @@ MODEL:
     USE_VISUAL_TOKENS: True  # Control whether to use visual tokens in VLM
     USE_CROSS_ATTENTION: True  # Enable cross-attention between VLM features and image embeddings
     CROSS_ATTENTION_LAYERS: 3
-    ENCODER_PRETRAINED: "checkpoints/beit3_large_patch16_224.pth"
     VISION_PRETRAINED: "checkpoints/sam2_hiera_large.pt"
     NUM_OBJECT_QUERIES: 20
     TEST:

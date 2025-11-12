@@ -34,7 +34,6 @@ def add_open_world_sam2_config(cfg):
     cfg.MODEL.OpenWorldSAM2.TRAIN_VLM = False
     cfg.MODEL.OpenWorldSAM2.QUERY_DIM = 256
     cfg.MODEL.OpenWorldSAM2.VISION_PRETRAINED = "checkpoints/sam_vit_h_4b8939.pth"
-    cfg.MODEL.OpenWorldSAM2.ENCODER_PRETRAINED = "checkpoints/beit3_large_patch16_224.pth"
 
     # OPENWORLDSAM2 config
     cfg.MODEL.OpenWorldSAM2.NUM_OBJECT_QUERIES = 20
