@@ -447,29 +447,31 @@ class OpenWorldSAM2(nn.Module):
 
             # Process all prompts for this image through SAM prompt encoder
             t0 = time.perf_counter()
-            sparse_embeddings, dense_embeddings = self.visual_model.sam_prompt_encoder(
-                points=None,
-                boxes=None,
-                masks=None,
-                text_embeds=batch_feat_with_tokens,
-            )
-            sparse_embeddings = sparse_embeddings.to(batch_feat_with_tokens.dtype)
+            _sam_dtype = getattr(self, 'dtype', torch.bfloat16)
+            with torch.autocast(device_type="cuda", dtype=_sam_dtype):
+                sparse_embeddings, dense_embeddings = self.visual_model.sam_prompt_encoder(
+                    points=None,
+                    boxes=None,
+                    masks=None,
+                    text_embeds=batch_feat_with_tokens,
+                )
+                sparse_embeddings = sparse_embeddings.to(batch_feat_with_tokens.dtype)
 
-            high_res_features = [
-                feat_level[img_idx].unsqueeze(0)
-                for feat_level in _features["high_res_feats"]
-            ]
+                high_res_features = [
+                    feat_level[img_idx].unsqueeze(0)
+                    for feat_level in _features["high_res_feats"]
+                ]
 
-            # Process all prompts for this image through SAM mask decoder
-            low_res_masks, iou_pred, _, _ = self.visual_model.sam_mask_decoder(
-                image_embeddings=_features["image_embed"][img_idx].unsqueeze(0),
-                image_pe=self.visual_model.sam_prompt_encoder.get_dense_pe(),
-                sparse_prompt_embeddings=sparse_embeddings,
-                dense_prompt_embeddings=dense_embeddings,
-                multimask_output=False,
-                repeat_image=True,
-                high_res_features=high_res_features,
-            )
+                # Process all prompts for this image through SAM mask decoder
+                low_res_masks, iou_pred, _, _ = self.visual_model.sam_mask_decoder(
+                    image_embeddings=_features["image_embed"][img_idx].unsqueeze(0),
+                    image_pe=self.visual_model.sam_prompt_encoder.get_dense_pe(),
+                    sparse_prompt_embeddings=sparse_embeddings,
+                    dense_prompt_embeddings=dense_embeddings,
+                    multimask_output=False,
+                    repeat_image=True,
+                    high_res_features=high_res_features,
+                )
 
             # Get predictions for this image
             pred_masks = low_res_masks.squeeze(1)
@@ -506,22 +508,23 @@ class OpenWorldSAM2(nn.Module):
                         filtered_class_labels = class_labels[keep_indices]
                     
                         # SECOND STAGE: Use filtered masks as visual prompts for SAM
-                        sparse_embeddings, dense_embeddings = self.visual_model.sam_prompt_encoder(
-                            points=None,
-                            boxes=None,
-                            masks=filtered_masks,
-                            text_embeds=None,
-                        )
-                    
-                        refined_masks, refined_iou_pred, refined_tokens_out, _ = self.visual_model.sam_mask_decoder(
-                            image_embeddings=_features["image_embed"][img_idx].unsqueeze(0),
-                            image_pe=self.visual_model.sam_prompt_encoder.get_dense_pe(),
-                            sparse_prompt_embeddings=sparse_embeddings,
-                            dense_prompt_embeddings=dense_embeddings,
-                            multimask_output=False,
-                            repeat_image=True,
-                            high_res_features=high_res_features,
-                        )
+                        with torch.autocast(device_type="cuda", dtype=_sam_dtype):
+                            sparse_embeddings, dense_embeddings = self.visual_model.sam_prompt_encoder(
+                                points=None,
+                                boxes=None,
+                                masks=filtered_masks,
+                                text_embeds=None,
+                            )
+
+                            refined_masks, refined_iou_pred, refined_tokens_out, _ = self.visual_model.sam_mask_decoder(
+                                image_embeddings=_features["image_embed"][img_idx].unsqueeze(0),
+                                image_pe=self.visual_model.sam_prompt_encoder.get_dense_pe(),
+                                sparse_prompt_embeddings=sparse_embeddings,
+                                dense_prompt_embeddings=dense_embeddings,
+                                multimask_output=False,
+                                repeat_image=True,
+                                high_res_features=high_res_features,
+                            )
                     
                         # Update low_res_masks and outputs with refined predictions
                         low_res_masks = refined_masks
