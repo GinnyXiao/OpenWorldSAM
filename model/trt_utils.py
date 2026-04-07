@@ -20,13 +20,13 @@ def get_trt_encoder(image_encoder: torch.nn.Module, dtype: torch.dtype, device: 
         device: CUDA device string.
 
     Returns:
-        TRT-compiled module, or the original module if compilation fails.
+        TRT-compiled module, or original module if compilation fails.
     """
     try:
         import torch_tensorrt
     except ImportError:
         print("[TRT] torch-tensorrt not installed, falling back to torch.compile")
-        return torch.compile(image_encoder, mode="reduce-overhead", fullgraph=False)
+        return torch.compile(image_encoder, mode="default", fullgraph=False)
 
     os.makedirs(_TRT_CACHE_DIR, exist_ok=True)
     dtype_tag = {torch.float32: "fp32", torch.float16: "fp16", torch.bfloat16: "bf16"}.get(dtype, "fp32")
@@ -37,8 +37,8 @@ def get_trt_encoder(image_encoder: torch.nn.Module, dtype: torch.dtype, device: 
     if os.path.exists(trt_path):
         print(f"[TRT] Loading cached TRT encoder from {trt_path}")
         try:
-            trt_encoder = torch.export.load(trt_path)
-            return trt_encoder.module()
+            loaded = torch.export.load(trt_path)
+            return loaded.module()
         except Exception as e:
             print(f"[TRT] Failed to load cached engine ({e}), recompiling...")
 
@@ -47,10 +47,12 @@ def get_trt_encoder(image_encoder: torch.nn.Module, dtype: torch.dtype, device: 
     example_input = torch.zeros(1, 3, 1024, 1024, dtype=dtype, device=device)
 
     try:
+        # Use torch.export with strict=False to handle custom CUDA ops in segment_anything_2
         with torch.no_grad():
             exported = torch.export.export(
                 image_encoder,
                 args=(example_input,),
+                strict=False,
             )
 
         trt_encoder = torch_tensorrt.dynamo.compile(
@@ -68,7 +70,7 @@ def get_trt_encoder(image_encoder: torch.nn.Module, dtype: torch.dtype, device: 
             optimization_level=3,
         )
 
-        torch.export.save(trt_encoder, trt_path)
+        torch_tensorrt.save(trt_encoder, trt_path, inputs=[example_input])
         print(f"[TRT] TRT engine saved to {trt_path}")
         return trt_encoder.module()
 
@@ -77,4 +79,4 @@ def get_trt_encoder(image_encoder: torch.nn.Module, dtype: torch.dtype, device: 
         print(f"[TRT] TRT compilation failed: {e}")
         traceback.print_exc()
         print("[TRT] Falling back to torch.compile")
-        return torch.compile(image_encoder, mode="reduce-overhead", fullgraph=False)
+        return torch.compile(image_encoder, mode="default", fullgraph=False)

@@ -566,6 +566,7 @@ class OpenWorldSAM2(nn.Module):
 
 
             if not self.training:
+                self._last_timings = timings
                 return processed_results
 
             ################################# Calculate Losses #######################################
