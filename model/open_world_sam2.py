@@ -1,4 +1,5 @@
 from typing import List, Tuple
+import contextlib
 import os
 import time
 import torch
@@ -86,6 +87,9 @@ class OpenWorldSAM2(nn.Module):
         self.register_buffer("pixel_mean", torch.Tensor(pixel_mean).view(-1, 1, 1), False)
         self.register_buffer("pixel_std", torch.Tensor(pixel_std).view(-1, 1, 1), False)
         self.dtype = dtype
+        # CUDA streams for overlapping backbone and BEiT-3 (lazily initialised on first forward)
+        self._backbone_stream: torch.cuda.Stream | None = None
+        self._beit3_stream: torch.cuda.Stream | None = None
 
         # additional args
         self.semantic_on = semantic_on
@@ -313,48 +317,73 @@ class OpenWorldSAM2(nn.Module):
         ############################## forward #############################
         timings = {}
 
-        # Time SAM2 backbone
-        t0 = time.perf_counter()
-        backbone_out = self.visual_model.forward_image(images)
-        # dict_keys(['vision_features', 'vision_pos_enc', 'backbone_fpn'])
+        # Lazily create CUDA streams for overlapped backbone + BEiT-3 execution.
+        # SAM2 backbone and BEiT-3 consume different preprocessed images (1024px vs
+        # 224px) and have no data dependency on each other, so they can run in parallel.
+        if self._backbone_stream is None and torch.cuda.is_available():
+            self._backbone_stream = torch.cuda.Stream()
+            self._beit3_stream = torch.cuda.Stream()
 
-        _, image_embeddings, _, _ = self.visual_model._prepare_backbone_features(backbone_out)
-        if self.TIMING_ENABLED:
-            torch.cuda.synchronize()
-        timings["sam2_backbone"] = time.perf_counter() - t0
+        use_streams = (self._backbone_stream is not None) and (not self.training)
 
-        # Expand images_evf according to number of prompts per image
-        # Time BEiT-3
-        t0 = time.perf_counter()
+        # Prepare BEiT-3 image input (CPU work, done before launching GPU streams)
         if self.use_visual_tokens:
             images_evf_list = []
             for i in range(len(offset) - 1):
                 start_i, end_i = offset[i], offset[i + 1]
-                images_evf_i = (
-                    images_evf[i]
-                    .unsqueeze(0)
-                    .expand(end_i - start_i, -1, -1, -1)
-                    .contiguous()
+                images_evf_list.append(
+                    images_evf[i].unsqueeze(0).expand(end_i - start_i, -1, -1, -1).contiguous()
                 )
-                images_evf_list.append(images_evf_i)
             images_evf = torch.cat(images_evf_list, dim=0)
 
-            # Process through BEIT-3
-            output = self.mm_extractor.beit3(
-                visual_tokens=images_evf,
-                textual_tokens=input_ids,
-                text_padding_position=~attention_masks,
-            )
-        else:
-            # When not using visual tokens, we'll pass None
-            output = self.mm_extractor.beit3(
-                visual_tokens=None,
-                textual_tokens=input_ids,
-                text_padding_position=~attention_masks,
-            )
+        # CUDA events for per-component GPU timing (accurate even with stream overlap)
         if self.TIMING_ENABLED:
-            torch.cuda.synchronize()
-        timings["beit3"] = time.perf_counter() - t0
+            ev_bb_s = torch.cuda.Event(enable_timing=True)
+            ev_bb_e = torch.cuda.Event(enable_timing=True)
+            ev_b3_s = torch.cuda.Event(enable_timing=True)
+            ev_b3_e = torch.cuda.Event(enable_timing=True)
+
+        # --- SAM2 backbone (on backbone_stream) ---
+        bb_ctx = torch.cuda.stream(self._backbone_stream) if use_streams else contextlib.nullcontext()
+        with bb_ctx:
+            if self.TIMING_ENABLED:
+                ev_bb_s.record()
+            backbone_out = self.visual_model.forward_image(images)
+            _, image_embeddings, _, _ = self.visual_model._prepare_backbone_features(backbone_out)
+            if self.TIMING_ENABLED:
+                ev_bb_e.record()
+
+        # --- BEiT-3 (on beit3_stream, overlapped with backbone) ---
+        b3_ctx = torch.cuda.stream(self._beit3_stream) if use_streams else contextlib.nullcontext()
+        with b3_ctx:
+            if self.TIMING_ENABLED:
+                ev_b3_s.record()
+            if self.use_visual_tokens:
+                output = self.mm_extractor.beit3(
+                    visual_tokens=images_evf,
+                    textual_tokens=input_ids,
+                    text_padding_position=~attention_masks,
+                )
+            else:
+                output = self.mm_extractor.beit3(
+                    visual_tokens=None,
+                    textual_tokens=input_ids,
+                    text_padding_position=~attention_masks,
+                )
+            if self.TIMING_ENABLED:
+                ev_b3_e.record()
+
+        # Rejoin both streams onto the default stream before any cross-stream use
+        if use_streams:
+            torch.cuda.current_stream().wait_stream(self._backbone_stream)
+            torch.cuda.current_stream().wait_stream(self._beit3_stream)
+
+        if self.TIMING_ENABLED:
+            ev_bb_e.synchronize()
+            ev_b3_e.synchronize()
+            timings["sam2_backbone"] = ev_bb_s.elapsed_time(ev_bb_e) / 1000.0
+            timings["beit3"] = ev_b3_s.elapsed_time(ev_b3_e) / 1000.0
+
         feat = output["encoder_out"][:, :1, ...]
         feat = self.text_hidden_fcs[0](feat)
 

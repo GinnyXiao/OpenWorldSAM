@@ -339,7 +339,9 @@ def get_trt_encoder(image_encoder: torch.nn.Module, dtype: torch.dtype, device: 
 
         torch_tensorrt.save(trt_encoder, trt_path, inputs=[example_input])
         print(f"[TRT] TRT engine saved to {trt_path}")
-        return trt_encoder.module()
+        # torch_tensorrt.dynamo.compile() returns a GraphModule directly (already callable).
+        # Only torch.export.load() returns an ExportedProgram that needs .module().
+        return trt_encoder
 
     except Exception as e:
         import traceback
@@ -516,6 +518,6 @@ def get_trt_decoder(
         import traceback
         print(f"[TRT] Decoder TRT compilation failed: {e}")
         traceback.print_exc()
-        # Fall back to torch.compile (mode="default" avoids CUDA-graph FakeTensor issues)
+        # Fall back to torch.compile (max-autotune for best kernel fusion; fullgraph=False avoids FakeTensor issues)
         print("[TRT] Falling back to torch.compile for decoder")
-        return torch.compile(wrapper, mode="default", fullgraph=False)
+        return torch.compile(wrapper, mode="max-autotune", fullgraph=False)
