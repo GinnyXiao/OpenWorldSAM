@@ -1,5 +1,6 @@
 from typing import List, Tuple
 import os
+import time
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -307,12 +308,20 @@ class OpenWorldSAM2(nn.Module):
         assert batch_size == len(offset) - 1
 
         ############################## forward #############################
+        timings = {}
+
+        # Time SAM2 backbone
+        t0 = time.perf_counter()
         backbone_out = self.visual_model.forward_image(images)
         # dict_keys(['vision_features', 'vision_pos_enc', 'backbone_fpn'])
 
         _, image_embeddings, _, _ = self.visual_model._prepare_backbone_features(backbone_out)
+        torch.cuda.synchronize()
+        timings["sam2_backbone"] = time.perf_counter() - t0
 
         # Expand images_evf according to number of prompts per image
+        # Time BEiT-3
+        t0 = time.perf_counter()
         if self.use_visual_tokens:
             images_evf_list = []
             for i in range(len(offset) - 1):
@@ -339,6 +348,8 @@ class OpenWorldSAM2(nn.Module):
                 textual_tokens=input_ids,
                 text_padding_position=~attention_masks,
             )
+        torch.cuda.synchronize()
+        timings["beit3"] = time.perf_counter() - t0
         feat = output["encoder_out"][:, :1, ...]
         feat = self.text_hidden_fcs[0](feat)
 
@@ -548,6 +559,7 @@ class OpenWorldSAM2(nn.Module):
                     sem_seg = self.semantic_inference(mask_cls, pred_masks, keep_sem_bgd=False)
                     processed_results[-1]["sem_seg"] = sem_seg
 
+                self._last_timings = timings
                 return processed_results
 
             ################################# Calculate Losses #######################################
