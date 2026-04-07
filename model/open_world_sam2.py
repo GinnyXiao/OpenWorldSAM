@@ -24,6 +24,8 @@ import logging
 
 @META_ARCH_REGISTRY.register()
 class OpenWorldSAM2(nn.Module):
+    TIMING_ENABLED = True  # Set to False in production to skip cuda sync overhead
+
     @configurable
     def __init__(
             self,
@@ -316,7 +318,8 @@ class OpenWorldSAM2(nn.Module):
         # dict_keys(['vision_features', 'vision_pos_enc', 'backbone_fpn'])
 
         _, image_embeddings, _, _ = self.visual_model._prepare_backbone_features(backbone_out)
-        torch.cuda.synchronize()
+        if self.TIMING_ENABLED:
+            torch.cuda.synchronize()
         timings["sam2_backbone"] = time.perf_counter() - t0
 
         # Expand images_evf according to number of prompts per image
@@ -348,7 +351,8 @@ class OpenWorldSAM2(nn.Module):
                 textual_tokens=input_ids,
                 text_padding_position=~attention_masks,
             )
-        torch.cuda.synchronize()
+        if self.TIMING_ENABLED:
+            torch.cuda.synchronize()
         timings["beit3"] = time.perf_counter() - t0
         feat = output["encoder_out"][:, :1, ...]
         feat = self.text_hidden_fcs[0](feat)
@@ -560,7 +564,6 @@ class OpenWorldSAM2(nn.Module):
                     processed_results[-1]["sem_seg"] = sem_seg
 
 
-            self._last_timings = timings
             if not self.training:
                 return processed_results
 
@@ -601,6 +604,8 @@ class OpenWorldSAM2(nn.Module):
                     for k, v in prompt_losses.items():
                         if k in self.criterion.weight_dict:
                             all_losses[k].append(v * self.criterion.weight_dict[k])
+
+        self._last_timings = timings
 
         # Average losses across batch
         if self.training:
