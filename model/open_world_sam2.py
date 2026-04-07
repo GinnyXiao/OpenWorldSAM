@@ -390,7 +390,11 @@ class OpenWorldSAM2(nn.Module):
             processed_results = []
 
         # Process each image batch
+        timings.setdefault("feat_prep", 0.0)
+        timings.setdefault("sam_decoder", 0.0)
+        timings.setdefault("postprocess", 0.0)
         for img_idx in range(batch_size):
+            t0 = time.perf_counter()
             img_feat = feat[img_idx]  # Get features for all prompts of this image
 
             # Prepare all feat_with_tokens for this image's prompts
@@ -439,7 +443,10 @@ class OpenWorldSAM2(nn.Module):
 
             # print(f"Batch feat with tokens shape: {batch_feat_with_tokens.shape}")
 
+            timings["feat_prep"] += time.perf_counter() - t0
+
             # Process all prompts for this image through SAM prompt encoder
+            t0 = time.perf_counter()
             sparse_embeddings, dense_embeddings = self.visual_model.sam_prompt_encoder(
                 points=None,
                 boxes=None,
@@ -521,7 +528,10 @@ class OpenWorldSAM2(nn.Module):
                         pred_logits = refined_iou_pred
                         class_labels = filtered_class_labels
 
+                timings["sam_decoder"] += time.perf_counter() - t0
+
                 # Proceed with postprocessing using the refined masks
+                t0 = time.perf_counter()
                 pred_masks = self.postprocess_masks(low_res_masks, orig_hw=original_size_list[img_idx])
 
                 processed_results.append({})
@@ -566,6 +576,8 @@ class OpenWorldSAM2(nn.Module):
 
 
             if not self.training:
+                torch.cuda.synchronize()
+                timings["postprocess"] += time.perf_counter() - t0
                 self._last_timings = timings
                 return processed_results
 
