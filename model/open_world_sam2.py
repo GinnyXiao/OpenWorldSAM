@@ -559,7 +559,9 @@ class OpenWorldSAM2(nn.Module):
                     sem_seg = self.semantic_inference(mask_cls, pred_masks, keep_sem_bgd=False)
                     processed_results[-1]["sem_seg"] = sem_seg
 
-                self._last_timings = timings
+
+            self._last_timings = timings
+            if not self.training:
                 return processed_results
 
             ################################# Calculate Losses #######################################
