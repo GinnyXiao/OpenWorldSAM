@@ -30,9 +30,9 @@ def get_trt_encoder(image_encoder: torch.nn.Module, dtype: torch.dtype, device: 
 
     os.makedirs(_TRT_CACHE_DIR, exist_ok=True)
     dtype_tag = {torch.float32: "fp32", torch.float16: "fp16", torch.bfloat16: "bf16"}.get(dtype, "fp32")
-    # NOTE: The TRT engine is GPU-architecture-specific (e.g. Ampere vs Turing).
-    # Delete this file if you switch to a different GPU model.
-    trt_path = os.path.join(_TRT_CACHE_DIR, f"sam2_hiera_large_encoder_{dtype_tag}.ep")
+    # Embed GPU SM version so engines are never loaded on a different GPU architecture.
+    sm = torch.cuda.get_device_capability(torch.device(device))
+    trt_path = os.path.join(_TRT_CACHE_DIR, f"sam2_hiera_large_encoder_sm{sm[0]}{sm[1]}_{dtype_tag}.ep")
 
     if os.path.exists(trt_path):
         print(f"[TRT] Loading cached TRT encoder from {trt_path}")
