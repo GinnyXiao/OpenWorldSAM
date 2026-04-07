@@ -90,6 +90,8 @@ class OpenWorldSAM2(nn.Module):
         # CUDA streams for overlapping backbone and BEiT-3 (lazily initialised on first forward)
         self._backbone_stream: torch.cuda.Stream | None = None
         self._beit3_stream: torch.cuda.Stream | None = None
+        # Cache tokenized prompts: same vocabulary → same input_ids/attention_masks
+        self._tokenization_cache: dict = {}
 
         # additional args
         self.semantic_on = semantic_on
@@ -310,7 +312,10 @@ class OpenWorldSAM2(nn.Module):
             all_prompts.extend(prompts)
             offset.append(offset[-1] + len(prompts))
 
-        input_ids, attention_masks = self.tokenize_prompts(all_prompts)
+        _tok_key = tuple(all_prompts)
+        if _tok_key not in self._tokenization_cache:
+            self._tokenization_cache[_tok_key] = self.tokenize_prompts(all_prompts)
+        input_ids, attention_masks = self._tokenization_cache[_tok_key]
         batch_size = len(batched_inputs)
         assert batch_size == len(offset) - 1
 
@@ -424,18 +429,16 @@ class OpenWorldSAM2(nn.Module):
         timings.setdefault("postprocess", 0.0)
         for img_idx in range(batch_size):
             t0 = time.perf_counter()
-            img_feat = feat[img_idx]  # Get features for all prompts of this image
+            img_feat = feat[img_idx]  # [n_prompts, 1, query_dim]
 
-            # Prepare all feat_with_tokens for this image's prompts
-            batch_feat_with_tokens = []
-            for prompt_idx, prompt_feat in enumerate(img_feat):
-                # Repeat feature along token dimension and add positional embeddings
-                feat_repeated = prompt_feat.expand(self.num_tokens, -1, -1)
-                feat_with_tokens = feat_repeated + self.positional_tokens.unsqueeze(1)
-                batch_feat_with_tokens.append(feat_with_tokens)
-
-            # Concatenate all prompts for this image
-            batch_feat_with_tokens = torch.cat(batch_feat_with_tokens, dim=0)
+            # Vectorized token expansion: replicate each prompt feature num_tokens times
+            # and add positional embeddings in one fused operation.
+            # img_feat: [n_prompts, 1, D] → repeat_interleave → [n_prompts*num_tokens, 1, D]
+            n_prompts = img_feat.shape[0]
+            pos_tokens = self.positional_tokens[:self.num_tokens].unsqueeze(1)  # [num_tokens, 1, D]
+            feat_tiled = img_feat.repeat_interleave(self.num_tokens, dim=0)     # [n_prompts*num_tokens, 1, D]
+            pos_tiled = pos_tokens.repeat(n_prompts, 1, 1)                      # [n_prompts*num_tokens, 1, D]
+            batch_feat_with_tokens = feat_tiled + pos_tiled                     # [n_prompts*num_tokens, 1, D]
 
             # Apply cross-attention if enabled
             if self.use_cross_attention:
