@@ -25,11 +25,13 @@ def get_trt_encoder(image_encoder: torch.nn.Module, dtype: torch.dtype, device: 
     try:
         import torch_tensorrt
     except ImportError:
-        print("[TRT] torch-tensorrt not installed, skipping TRT compilation")
-        return image_encoder
+        print("[TRT] torch-tensorrt not installed, falling back to torch.compile")
+        return torch.compile(image_encoder, mode="reduce-overhead", fullgraph=False)
 
     os.makedirs(_TRT_CACHE_DIR, exist_ok=True)
     dtype_tag = {torch.float32: "fp32", torch.float16: "fp16", torch.bfloat16: "bf16"}.get(dtype, "fp32")
+    # NOTE: The TRT engine is GPU-architecture-specific (e.g. Ampere vs Turing).
+    # Delete this file if you switch to a different GPU model.
     trt_path = os.path.join(_TRT_CACHE_DIR, f"sam2_hiera_large_encoder_{dtype_tag}.ep")
 
     if os.path.exists(trt_path):
@@ -71,5 +73,8 @@ def get_trt_encoder(image_encoder: torch.nn.Module, dtype: torch.dtype, device: 
         return trt_encoder.module()
 
     except Exception as e:
-        print(f"[TRT] TRT compilation failed ({e}), falling back to torch.compile")
+        import traceback
+        print(f"[TRT] TRT compilation failed: {e}")
+        traceback.print_exc()
+        print("[TRT] Falling back to torch.compile")
         return torch.compile(image_encoder, mode="reduce-overhead", fullgraph=False)
