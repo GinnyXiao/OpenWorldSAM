@@ -106,7 +106,8 @@ class OpenWorldSAM2(nn.Module):
     def from_config(cls, cfg):
         # EVF-SAM config & model
         evf_config = cfg.MODEL.OpenWorldSAM2.EVF_CONFIG
-        torch_dtype = torch.float32
+        _dtype_map = {"fp32": torch.float32, "fp16": torch.float16, "bf16": torch.bfloat16}
+        torch_dtype = _dtype_map.get(cfg.MODEL.OpenWorldSAM2.TORCH_DTYPE, torch.float32)
         kwargs = {"torch_dtype": torch_dtype}
 
         # tokenizer

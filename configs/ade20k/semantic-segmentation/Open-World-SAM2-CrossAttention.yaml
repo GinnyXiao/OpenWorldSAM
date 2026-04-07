@@ -9,7 +9,7 @@ MODEL:
     DICE_WEIGHT: 0.0
     # EVF-SAM2 config
     QUERY_DIM: 256
-    TORCH_DTYPE: "fp32"
+    TORCH_DTYPE: "bf16"
     TRAIN_TIE_BREAKER: True
     TRAIN_VLM: False
     USE_VISUAL_TOKENS: True  # Control whether to use visual tokens in VLM

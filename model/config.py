@@ -28,7 +28,7 @@ def add_open_world_sam2_config(cfg):
     # EVF-SAM model config
     cfg.MODEL.OpenWorldSAM2.EVF_CONFIG = "YxZhang/evf-sam2-multitask"
     cfg.MODEL.OpenWorldSAM2.TOKENIZER_CONFIG = "YxZhang/evf-sam2-multitask"
-    cfg.MODEL.OpenWorldSAM2.TORCH_DTYPE = "fp32" # choices=["fp32", "bf16", "fp16"]
+    cfg.MODEL.OpenWorldSAM2.TORCH_DTYPE = "bf16" # choices=["fp32", "bf16", "fp16"]
     cfg.MODEL.OpenWorldSAM2.TRAIN_MASK_DECODER = False
     cfg.MODEL.OpenWorldSAM2.TRAIN_PROMPT_ENCODER = False
     cfg.MODEL.OpenWorldSAM2.TRAIN_VLM = False
